@@ -34,7 +34,9 @@ fn exe_command(pwsh_command:String)->String{
     });
 
     // 等待线程完成并获取结果
-    handle.join().expect("Thread panicked")
+    let result=handle.join().expect("Thread panicked");
+    // println!("{}",result);
+    result
     
 }
 

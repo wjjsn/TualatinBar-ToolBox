@@ -66,6 +66,23 @@ const contentMap: ContentMap = {
     '其他工具': [],
 };
 
+const getHardwareInfo = async (handware_type: string) => {
+    invoke("get_hardware_info", { className: handware_type }).then(
+        (message) => {
+            try {
+                const jsonString = typeof message === 'string' ? message : JSON.stringify(message);
+                const jsonObject = JSON.parse(jsonString);
+                console.log(jsonObject); // 输出解析后的对象
+                return jsonObject; // 如果需要使用解析结果，可以返回它
+            } catch (error) {
+                console.error("json解析失败");
+            }
+
+        }
+    );
+}
+
+
 const sidebarItems = Object.keys(contentMap);
 
 export default function App() {
@@ -86,7 +103,7 @@ export default function App() {
         }}>
             <Box sx={{
                 display: 'flex',
-                width: '10%',
+                width: '20%',
                 height: '100%',
             }}>
                 <ButtonGroup variant="text" aria-label="Basic button group" orientation="vertical" size="large">
@@ -94,7 +111,8 @@ export default function App() {
                         <Button
                             key={item}
                             onClick={() => {
-                                handleSelect(item)
+                                handleSelect(item);
+                                getHardwareInfo("Win32_Keyboard");
                                 // invoke("start_exe", { exePath:"./tools/处理器工具/CPUZ/cpuz_x32.exe"})
                             }}
                             variant={selected === item ? 'contained' : 'text'}
@@ -106,7 +124,7 @@ export default function App() {
             </Box>
             <Box sx={{
                 display: 'flex',
-                width: '90%',
+                width: '80%',
                 height: '100%',
             }}>
                 {currentCards.length > 0 ? (
