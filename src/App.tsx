@@ -1,11 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Box,
     Button,
     ButtonGroup,
     Typography,
     Grid,
-    Divider
+    Divider,
+    Card,
+    CardContent,
+    CardActions,
+    Stack,
+    CircularProgress
 } from '@mui/material';
 import { invoke } from '@tauri-apps/api/core';
 // const invoke = window.__TAURI__.core.invoke;
@@ -16,9 +21,24 @@ interface Product {
     description: string;
     imageUrl: string;
 }
+interface HardwareInfo {
+    osInfo: any;
+    baseBoardInfo: any;
+    BIOSInfo: any;
+    CPUInfo: any;
+    memoryInfo: any;
+    GPUInfo: any;
+    audioInfo: any;
+    networkAdapterInfo: any;
+    diskInfo: any;
+    monitorInfo: any;
+    OEMInfo: any;
+    batteryInfo: any;
+}
 type ContentMap = {
     [key: string]: Product[];
 };
+
 // 模拟不同选项对应的内容
 const contentMap: ContentMap = {
     '硬件信息': [
@@ -51,7 +71,7 @@ const contentMap: ContentMap = {
         {
             id: 5,
             title: 'MemTest',
-            description: '款可以在windows系统下测试内存稳定性的软件',
+            description: '一款可以在windows系统下测试内存稳定性的软件',
             exePath: "./tools/内存工具/memtest/memtest.exe",
             imageUrl: 'https://via.placeholder.com/150?text=Image+E',
         },
@@ -66,31 +86,39 @@ const contentMap: ContentMap = {
     '其他工具': [],
 };
 
-const getHardwareInfo = async (handware_type: string) => {
-    invoke("get_hardware_info", { className: handware_type }).then(
-        (message) => {
-            try {
-                const jsonString = typeof message === 'string' ? message : JSON.stringify(message);
-                const jsonObject = JSON.parse(jsonString);
-                console.log(jsonObject); // 输出解析后的对象
-                return jsonObject; // 如果需要使用解析结果，可以返回它
-            } catch (error) {
-                console.error("json解析失败");
-            }
+const getHardwareInfo = async (hardware_type: string): Promise<any> => {
+    try {
+        // 等待 invoke 完成并获取结果
+        const message = await invoke("get_hardware_info", { className: hardware_type });
 
-        }
-    );
+        // 统一处理消息类型
+        const jsonString = typeof message === 'string'
+            ? message
+            : JSON.stringify(message);
+
+        // 解析为JSON对象
+        return JSON.parse(jsonString);
+    } catch (error) {
+        console.error(hardware_type, "json解析失败:", error);
+        // throw error; // 抛出错误以便调用者处理
+        return null;
+    }
 }
-
 
 const sidebarItems = Object.keys(contentMap);
 
 export default function App() {
     const [selected, setSelected] = useState(sidebarItems[0]); // 默认选中第一个
+    const [loading, setLoading] = useState(true);
 
     const handleSelect = (item: string) => {
         setSelected(item);
     };
+
+    useEffect(() => {
+        setLoading(false);
+
+    }, []);
 
     const currentCards = contentMap[selected] || [];
 
@@ -112,7 +140,7 @@ export default function App() {
                             key={item}
                             onClick={() => {
                                 handleSelect(item);
-                                getHardwareInfo("Win32_Keyboard");
+                                // getHardwareInfo("Win32_Keyboard");
                                 // invoke("start_exe", { exePath:"./tools/处理器工具/CPUZ/cpuz_x32.exe"})
                             }}
                             variant={selected === item ? 'contained' : 'text'}
@@ -130,7 +158,34 @@ export default function App() {
                 {currentCards.length > 0 ? (
                     <Box>
                         {currentCards.some(card => card.id === 0) ? (//硬件信息
-                            <Typography color="text.secondary">找到目标ID的内容</Typography>
+                            <Box sx={{
+                                display: 'flex',
+                                justifyContent: 'center', // 水平居中
+                                alignItems: 'center',     // 垂直居中
+                                width: "100vh",
+                                height: '100vh',          // 容器高度（根据需要调整）
+                            }}>
+                                {/* {loading ? (
+                                    <Box></Box>
+                                ) : ( */}
+                                    <Stack spacing={2}>
+                                        <TextInfo friendlyName="操作系统" className="Win32_OperatingSystem" />
+                                        <TextInfo friendlyName="主板" className="Win32_BaseBoard" />
+                                        <TextInfo friendlyName="BIOS" className="Win32_BIOS" />
+                                        <TextInfo friendlyName="CPU" className="Win32_Processor" />
+                                        <TextInfo friendlyName="内存" className="Win32_MemoryDevice" />
+                                        <TextInfo friendlyName="显卡" className="Win32_VideoController" />
+                                        <TextInfo friendlyName="声卡" className="Win32_SoundDevice" />
+                                        <TextInfo friendlyName="网卡" className="Win32_NetworkAdapter" />
+                                        <TextInfo friendlyName="磁盘" className="Win32_DiskDrive" />
+                                        <TextInfo friendlyName="显示器" className="monitor" />
+                                        <TextInfo friendlyName="OEM" className="Win32_ComputerSystem" />
+                                        <TextInfo friendlyName="电池" className="Win32_Battery" />
+                                    </Stack>
+                                {/* )} */}
+
+
+                            </Box>
                         ) : (//工具
                             <Grid container spacing={2}>
                                 {currentCards.map(item => (
@@ -189,5 +244,43 @@ export default function App() {
         </Box >
 
 
+    );
+}
+
+function TextInfo(props: { friendlyName: string; className: string }) {
+    const [hardwareInfo, setHardwareInfo] = useState<HardwareInfo | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchHardwareInfo = async () => {
+            setHardwareInfo(await getHardwareInfo(props.className));
+            setLoading(false);
+        }
+
+        fetchHardwareInfo();
+
+    }, []);
+
+    useEffect(() => {
+        console.log(props.friendlyName, hardwareInfo);
+    }, [hardwareInfo]);
+
+    return (
+        <Card sx={{ width: "100vh" }}>
+            <CardContent>
+                <Typography variant="h5">
+                    {props.friendlyName}
+                </Typography>
+                <Divider sx={{ width: '100%', my: 0.5 }} />
+                {loading ? (
+                    <CircularProgress enableTrackSlot size={40} />
+                ) : (
+                    <Typography>
+                        {JSON.stringify(hardwareInfo, null, 2)}
+                    </Typography>
+                )}
+
+            </CardContent>
+        </Card>
     );
 }

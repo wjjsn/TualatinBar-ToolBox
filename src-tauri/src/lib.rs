@@ -1,12 +1,12 @@
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use std::process::{Command, Stdio};
-use std::thread;
+use tokio;
 
 #[tauri::command]
 fn start_exe(exe_path : String) -> () {
     println!("Hello {}! You've been greeted from Rust!",exe_path);
-    Command::new("pwsh")
+    Command::new("powershell")
         .arg("-Command") // 长格式列表
         .arg(exe_path)
         .stdout(Stdio::inherit()) // 直接继承父进程的 stdout
@@ -16,38 +16,37 @@ fn start_exe(exe_path : String) -> () {
         .expect("Command wasn't running");
 }
 
-fn exe_command(pwsh_command:String)->String{
-    let handle = thread::spawn(move || {
-        // 创建命令对象
-        let output = Command::new("powershell")
+#[tauri::command]
+async fn get_hardware_info(class_name: String) -> Result<String, String> {
+    let pwsh_command = if class_name == "monitor" {
+        r#"Get-WmiObject -Namespace root\wmi -Class WmiMonitorID -ErrorAction SilentlyContinue | ConvertTo-Json"#.to_string()
+    } else {
+        format!("Get-CimInstance -ClassName {} | ConvertTo-Json", class_name)
+    };
+
+    match exe_command_async(pwsh_command).await {
+        Ok(output) => Ok(output),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+// 异步执行 PowerShell 命令（内部使用 spawn_blocking）
+async fn exe_command_async(pwsh_command: String) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let output = tokio::task::spawn_blocking(move || {
+        Command::new("powershell")
             .arg("-Command")
             .arg(format!(
                 "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $OutputEncoding = [System.Text.Encoding]::UTF8; {}",
                 pwsh_command
             ))
-            .output()  // 执行命令并等待输出
-            .expect("Failed to execute command");
+            .output()
+    })
+    .await??; // 第一个 ? 解包 JoinHandle，第二个 ? 解包 Result<Output, Error>
 
-        // 将输出转换为字符串
-        String::from_utf8(output.stdout)
-            .expect("Invalid UTF-8 in command output")
-    });
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|e| format!("Invalid UTF-8 in command output: {}", e))?;
 
-    // 等待线程完成并获取结果
-    let result=handle.join().expect("Thread panicked");
-    // println!("{}",result);
-    result
-    
-}
-
-#[tauri::command]
-fn get_hardware_info(class_name:String)->String{
-    if class_name=="monitor" {
-        exe_command(r"Get-WmiObject -Namespace root\wmi -Class WmiMonitorID -ErrorAction SilentlyContinue | ConvertTo-Json".into())
-    }else {
-        exe_command(format!("Get-CimInstance -ClassName {} | ConvertTo-Json",class_name))
-    }
-        
+    Ok(stdout)
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
