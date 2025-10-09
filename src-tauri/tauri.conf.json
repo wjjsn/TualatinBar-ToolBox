@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "tualatinbar-toolbox",
+  "productName": "TualatinBar-Toolox",
   "version": "0.1.0",
   "identifier": "com.tauri-app.tualatinbar-toolbox",
   "build": {
@@ -12,8 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "tualatinbar-toolbox",
-        "width": 800,
+        "title": "TualatinBar-Toolox",
+        "center": true,
+        "width": 1000,
         "height": 600
       }
     ],
