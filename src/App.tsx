@@ -8,7 +8,6 @@ import {
     Divider,
     Card,
     CardContent,
-    CardActions,
     Stack,
     CircularProgress
 } from '@mui/material';
@@ -109,16 +108,16 @@ const sidebarItems = Object.keys(contentMap);
 
 export default function App() {
     const [selected, setSelected] = useState(sidebarItems[0]); // 默认选中第一个
-    const [loading, setLoading] = useState(true);
+    // const [loading, setLoading] = useState(true);
 
     const handleSelect = (item: string) => {
         setSelected(item);
     };
 
-    useEffect(() => {
-        setLoading(false);
+    // useEffect(() => {
+    //     setLoading(false);
 
-    }, []);
+    // }, []);
 
     const currentCards = contentMap[selected] || [];
 
